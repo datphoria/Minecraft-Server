@@ -1,0 +1,18 @@
+# CurseForge mods — one reference per line.
+# Requires CF_API_KEY in .env (https://console.curseforge.com/).
+#
+# Supported formats (see image docs: CURSEFORGE_FILES):
+#   238222                    # numeric project ID (from CurseForge project page)
+#   jei                       # project slug — newest file for MC 1.21.1 + Forge
+#   jei:4593548               # project slug + specific file ID
+#   238222:4593548            # project ID + file ID
+#   jei@10.2.1.1005           # project slug + partial filename match
+#   https://www.curseforge.com/minecraft/mc-mods/jei
+#
+# Project ID: on the mod's CurseForge page → About Project → Project ID
+# File ID: open a specific file page → number in the URL .../files/<file-id>
+#
+# Lines starting with # and blank lines are ignored.
+# Removing a line removes that mod from /data/mods on the next start.
+
+# --- Add your CurseForge mods below ---

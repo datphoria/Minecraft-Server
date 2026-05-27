@@ -1,0 +1,14 @@
+# Server world, mods, and configs generated at runtime (never commit)
+minecraft_data/
+
+# Secrets and local deploy overrides
+.env
+.env.local
+
+# OS / editor noise
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+.idea/
+.vscode/

@@ -1,0 +1,17 @@
+# Modrinth project slugs — one per line.
+# The itzg/minecraft-server image downloads compatible .jar files for TYPE=FORGE
+# and VERSION=1.21.1 on each container start.
+#
+# Find slugs in the Modrinth URL: https://modrinth.com/mod/<slug>
+#
+# Format examples (uncomment and edit for your pack):
+#   fabric-api          # latest release for current MC + loader
+#   create              # mod slug only
+#   sodium:beta           # latest beta release
+#   pl3xmap?              # optional — skip if no 1.21.1 build (won't fail startup)
+#   some-mod:Oa9ZDzZq     # pin a specific Modrinth version ID
+#
+# Lines starting with # and blank lines are ignored.
+# Removing a line removes that mod from /data/mods on the next start.
+
+# --- Add your Modrinth mods below ---

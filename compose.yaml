@@ -1,0 +1,34 @@
+services:
+  minecraft:
+    image: itzg/minecraft-server:latest
+    container_name: minecraft-forge
+    restart: unless-stopped
+    ports:
+      - "25565:25565"
+    env_file:
+      - .env
+    environment:
+      EULA: "TRUE"
+      TYPE: FORGE
+      VERSION: "1.21.1"
+      # MAX_MEMORY is the image's variable; MAX_RAM in docs often means the same thing
+      MEMORY: ${MAX_MEMORY:-4G}
+      MAX_MEMORY: ${MAX_MEMORY:-4G}
+      TZ: ${TZ:-UTC}
+      # Mod autoloaders — one slug/ID per line in mounted files (see README)
+      MODRINTH_PROJECTS: "@/deploy/modrinth-mods.txt"
+      CURSEFORGE_FILES: "@/deploy/curseforge-mods.txt"
+      MODRINTH_DOWNLOAD_DEPENDENCIES: ${MODRINTH_DOWNLOAD_DEPENDENCIES:-required}
+      # CF_API_KEY is loaded from .env via env_file (required for curseforge-mods.txt)
+      # Graceful shutdown: announce in-game before stopping (seconds)
+      STOP_SERVER_ANNOUNCE_DELAY: ${STOP_SERVER_ANNOUNCE_DELAY:-30}
+      STOP_DURATION: ${STOP_DURATION:-90}
+      USE_AIKAR_FLAGS: "true"
+      ENABLE_RCON: "true"
+      RCON_PASSWORD: ${RCON_PASSWORD:-changeme}
+      # Uncomment to pin a specific Forge build instead of the recommended one:
+      # FORGE_VERSION: "52.0.0"
+    volumes:
+      - ./minecraft_data:/data
+      - ./modrinth-mods.txt:/deploy/modrinth-mods.txt:ro
+      - ./curseforge-mods.txt:/deploy/curseforge-mods.txt:ro

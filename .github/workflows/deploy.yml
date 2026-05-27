@@ -1,0 +1,61 @@
+name: Deploy Minecraft Server
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "compose.yaml"
+      - "modrinth-mods.txt"
+      - "curseforge-mods.txt"
+      - "deploy.sh"
+      - ".github/workflows/deploy.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: minecraft-deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    env:
+      VPS_HOST: ${{ secrets.VPS_HOST }}
+      VPS_USER: ${{ secrets.VPS_USER }}
+      VPS_PATH: ${{ secrets.VPS_PATH }}
+      DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+      DEPLOY_RSYNC_DELETE: ${{ vars.DEPLOY_RSYNC_DELETE || 'false' }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Validate required secrets
+        run: |
+          set -euo pipefail
+          missing=()
+          [[ -z "${VPS_HOST:-}" ]] && missing+=(VPS_HOST)
+          [[ -z "${VPS_USER:-}" ]] && missing+=(VPS_USER)
+          [[ -z "${VPS_PATH:-}" ]] && missing+=(VPS_PATH)
+          if ((${#missing[@]})); then
+            echo "::error::Missing repository secrets: ${missing[*]}"
+            echo "Add them under Settings → Secrets and variables → Actions"
+            exit 1
+          fi
+
+      - name: Load SSH key
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.VPS_SSH_KEY }}
+
+      - name: Trust VPS host key
+        run: |
+          set -euo pipefail
+          mkdir -p ~/.ssh
+          ssh-keyscan -H "$VPS_HOST" >> ~/.ssh/known_hosts
+
+      - name: Deploy to VPS
+        run: |
+          set -euo pipefail
+          chmod +x deploy.sh
+          ./deploy.sh
