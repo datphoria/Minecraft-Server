@@ -1,0 +1,26 @@
+services:
+  minecraft:
+    image: itzg/minecraft-server:latest
+    container_name: minecraft-forge
+    restart: unless-stopped
+    ports:
+      - "25565:25565"
+    env_file:
+      - .env
+    environment:
+      EULA: "TRUE"
+      TYPE: FORGE
+      VERSION: "1.21.1"
+      MEMORY: ${MAX_MEMORY:-4G}
+      MAX_MEMORY: ${MAX_MEMORY:-4G}
+      TZ: ${TZ:-UTC}
+      # This phase intentionally disables Modrinth/CurseForge auto-mod management
+      # so your existing /minecraft/mods and world are preserved.
+      STOP_SERVER_ANNOUNCE_DELAY: ${STOP_SERVER_ANNOUNCE_DELAY:-30}
+      STOP_DURATION: ${STOP_DURATION:-90}
+      USE_AIKAR_FLAGS: "true"
+      ENABLE_RCON: "true"
+      RCON_PASSWORD: ${RCON_PASSWORD:-changeme}
+    volumes:
+      - /minecraft:/data
+

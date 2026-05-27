@@ -12,6 +12,7 @@ Git-managed [itzg/minecraft-server](https://github.com/itzg/docker-minecraft-ser
 ├── deploy.sh              # Deploy script (local or CI)
 ├── .github/workflows/     # GitHub Actions (optional automated deploy)
 ├── .env.example           # Template for secrets and deploy settings
+├── compose.existing.yaml  # Phase 1: use existing /minecraft directly (preserves current mods)
 ├── minecraft_data/        # Created at runtime — world, mods, configs (not in Git)
 └── README.md
 ```
@@ -113,15 +114,29 @@ docker compose logs -f
 
 First start downloads Forge, resolves mods from your list files, and creates `./minecraft_data/`. This can take several minutes.
 
+### If you want to preserve your existing `/minecraft` mods/world (recommended for migration)
+
+Run this instead of the default `compose.yaml` for the first boot:
+
+```bash
+cd /opt/minecraft-server
+docker compose -f compose.existing.yaml pull
+docker compose -f compose.existing.yaml up -d
+docker compose -f compose.existing.yaml logs -f
+```
+
+This mounts your VPS directory `/minecraft` directly to the container `/data`, and it deliberately disables Modrinth/CurseForge auto-mod management so your current mods are not wiped.
+
 ## 5. Migrating from a manual install
 
 1. Stop the old server process.
-2. Copy **only** what you need into `minecraft_data/` on the VPS:
-   - `world/` → `minecraft_data/world/`
-   - `server.properties`, `ops.json`, `whitelist.json` if you use them
-   - Do **not** copy old `mods/` if you are switching to list-based installs — let the image repopulate `/data/mods` from your text files.
-3. Add every mod you still want to `modrinth-mods.txt` and/or `curseforge-mods.txt`.
-4. `docker compose up -d`
+2. For a safe “first boot” while you still have lots of mods installed, use `compose.existing.yaml` (section 4) and skip the copy of mods for now.
+3. After the server boots successfully using your existing `/minecraft`:
+   - Either keep list-based auto-mod management disabled (mods stay as-is forever), or
+   - Populate `modrinth-mods.txt` / `curseforge-mods.txt` with the mods you want, then switch back to the default `compose.yaml` so the container manages `/data/mods` for future updates.
+4. When you switch to `compose.yaml`, you can either:
+   - Copy `/minecraft` into `./minecraft_data` on the VPS (world/config/mods), then start with `docker compose up -d`, or
+   - Temporarily mount `/minecraft:/data` in `compose.yaml` once your mod lists are complete (so the container does not wipe anything you didn't list).
 
 ## 6. Adding or removing a mod
 
@@ -206,6 +221,31 @@ Push to `main` can deploy the server without running `deploy.sh` locally. The wo
 | **Manual** | Actions tab → **Deploy Minecraft Server** → **Run workflow** |
 
 Only one deploy runs at a time (`concurrency` group).
+
+## 12. Automate migration of your existing 263 mods
+
+If your VPS currently has your mods as Forge jars under `/minecraft/mods/*.jar`, you can generate an initial `modrinth-mods.txt` automatically (Phase 2 starter list).
+
+### Phase 1: start without managed mods
+Follow section 4 and run `compose.existing.yaml` first so your current jars are preserved.
+
+### Generate a candidate `modrinth-mods.txt`
+Run this on the VPS (requires `python3`):
+
+```bash
+cd /opt/minecraft-server
+python3 scripts/generate_modrinth_mods_from_jars.py \
+  --mods-dir /minecraft/mods \
+  --out ./generated-modrinth-mods.txt \
+  --mc-version 1.21.1
+```
+
+Review `generated-modrinth-mods.txt`:
+- Lines ending with `?` are *optional* guesses (useful to avoid hard startup failure while you verify).
+- Replace your repo `modrinth-mods.txt` with the generated output once you’re happy with it (or edit specific lines).
+
+### Phase 2: switch back to managed installs
+After your generated list is correct enough to cover all the mods you care about, switch back to the default `compose.yaml` and restart the stack.
 
 ### Optional: require approval before deploy
 
