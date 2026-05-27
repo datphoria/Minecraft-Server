@@ -11,37 +11,91 @@ import zipfile
 
 
 MODID_RE = re.compile(r'modId\s*=\s*"([^"]+)"', re.IGNORECASE)
+FABRIC_BUILTIN_IDS = {
+    "minecraft",
+    "fabricloader",
+    "fabric",
+    "java",
+    "quilt_loader",
+    "quilted_fabric_api",
+    "neoforge",
+    "forge",
+}
 
 
-def extract_modids_from_forge_jar(jar_path: str) -> list[str]:
+def _dedup_keep_order(items: list[str]) -> list[str]:
+    out: list[str] = []
+    seen = set()
+    for it in items:
+        it = it.strip()
+        if not it or it in seen:
+            continue
+        seen.add(it)
+        out.append(it)
+    return out
+
+
+def extract_modids_from_toml_in_jar(jar_path: str) -> list[str]:
     """
-    Best-effort: Forge jars usually contain META-INF/mods.toml with one or more modId="...".
+    Best-effort:
+    - Forge:     META-INF/mods.toml
+    - NeoForge:  META-INF/neoforge.mods.toml
     """
     try:
         with zipfile.ZipFile(jar_path, "r") as zf:
-            # Forge mods.toml is typically at this path.
-            candidates = [name for name in zf.namelist() if name.lower() == "meta-inf/mods.toml"]
-            if not candidates:
+            names = {name.lower(): name for name in zf.namelist()}
+            candidate = None
+            for wanted in ("meta-inf/neoforge.mods.toml", "meta-inf/mods.toml"):
+                if wanted in names:
+                    candidate = names[wanted]
+                    break
+            if not candidate:
                 return []
-            raw = zf.read(candidates[0])
+            raw = zf.read(candidate)
     except zipfile.BadZipFile:
         return []
 
     text = raw.decode("utf-8", errors="ignore")
-    found = MODID_RE.findall(text)
-    # Dedup while preserving order.
-    out: list[str] = []
-    seen = set()
-    for mid in found:
-        m = mid.strip()
-        if not m or m in seen:
-            continue
-        seen.add(m)
-        out.append(m)
-    return out
+    return _dedup_keep_order(MODID_RE.findall(text))
 
 
-def modrinth_search(query: str, limit: int, timeout_s: int) -> list[dict]:
+def extract_modids_from_fabric_jar(jar_path: str) -> list[str]:
+    """
+    Best-effort: Fabric jars contain fabric.mod.json at the jar root.
+    The file can be an object or (rarely) an array of objects in spec; we handle both.
+    """
+    try:
+        with zipfile.ZipFile(jar_path, "r") as zf:
+            names = {name.lower(): name for name in zf.namelist()}
+            if "fabric.mod.json" not in names:
+                return []
+            raw = zf.read(names["fabric.mod.json"])
+    except zipfile.BadZipFile:
+        return []
+
+    text = raw.decode("utf-8", errors="ignore")
+    try:
+        data = json.loads(text)
+    except json.JSONDecodeError:
+        return []
+
+    ids: list[str] = []
+    if isinstance(data, dict):
+        mid = data.get("id")
+        if isinstance(mid, str):
+            ids.append(mid)
+    elif isinstance(data, list):
+        for entry in data:
+            if isinstance(entry, dict):
+                mid = entry.get("id")
+                if isinstance(mid, str):
+                    ids.append(mid)
+
+    ids = [i for i in ids if i and i not in FABRIC_BUILTIN_IDS]
+    return _dedup_keep_order(ids)
+
+
+def modrinth_search(query: str, limit: int, timeout_s: int, facets: str | None) -> list[dict]:
     """
     Uses Modrinth API v3 search.
     Endpoint: https://api.modrinth.com/v3/search?query=...&limit=...
@@ -49,6 +103,8 @@ def modrinth_search(query: str, limit: int, timeout_s: int) -> list[dict]:
     """
     q = urllib.parse.quote(query)
     url = f"https://api.modrinth.com/v3/search?query={q}&limit={limit}"
+    if facets:
+        url += f"&facets={urllib.parse.quote(facets)}"
     req = urllib.request.Request(url, headers={"User-Agent": "minecraft-modlist-generator/1.0"})
     with urllib.request.urlopen(req, timeout=timeout_s) as resp:
         body = resp.read().decode("utf-8", errors="replace")
@@ -81,6 +137,11 @@ def main() -> int:
     ap.add_argument("--mods-dir", default="/minecraft/mods", help="Folder containing mods*.jar")
     ap.add_argument("--out", default="generated-modrinth-mods.txt", help="Output mod list filename")
     ap.add_argument("--mc-version", default="1.21.1", help="Used for confidence heuristics (optional)")
+    ap.add_argument(
+        "--recursive",
+        action="store_true",
+        help="Scan subdirectories of --mods-dir (common for mods loaders and launchers)",
+    )
     ap.add_argument("--search-limit", type=int, default=8, help="How many Modrinth search hits to fetch per modId")
     ap.add_argument("--timeout-s", type=int, default=20, help="HTTP timeout per query (seconds)")
     ap.add_argument("--optional-when-uncertain", action="store_true", default=True)
@@ -91,11 +152,17 @@ def main() -> int:
         print(f"ERROR: mods dir not found: {mods_dir}", file=sys.stderr)
         return 2
 
-    jar_paths = sorted(
-        os.path.join(mods_dir, f)
-        for f in os.listdir(mods_dir)
-        if f.lower().endswith(".jar")
-    )
+    jar_paths: list[str] = []
+    if args.recursive:
+        for root, _dirs, files in os.walk(mods_dir):
+            for f in files:
+                if f.lower().endswith(".jar"):
+                    jar_paths.append(os.path.join(root, f))
+    else:
+        jar_paths = [
+            os.path.join(mods_dir, f) for f in os.listdir(mods_dir) if f.lower().endswith(".jar")
+        ]
+    jar_paths = sorted(jar_paths)
     if not jar_paths:
         print(f"ERROR: no .jar files found in: {mods_dir}", file=sys.stderr)
         return 2
@@ -103,7 +170,10 @@ def main() -> int:
     extracted_modids: list[str] = []
     seen_modids = set()
     for jar in jar_paths:
-        mids = extract_modids_from_forge_jar(jar)
+        mids: list[str] = []
+        mids.extend(extract_modids_from_toml_in_jar(jar))
+        if not mids:
+            mids.extend(extract_modids_from_fabric_jar(jar))
         for mid in mids:
             if mid in seen_modids:
                 continue
@@ -111,8 +181,24 @@ def main() -> int:
             extracted_modids.append(mid)
 
     if not extracted_modids:
-        print("ERROR: no modId values found. Ensure jars are Forge mods with META-INF/mods.toml.", file=sys.stderr)
+        print(
+            "ERROR: no mod IDs found. Expected Forge/NeoForge META-INF/*.toml or Fabric fabric.mod.json.",
+            file=sys.stderr,
+        )
         return 2
+
+    # Prefer mod results compatible with your target MC version and common loaders.
+    facets = None
+    if args.mc_version:
+        # AND: project_type mod, versions MC
+        # OR loader categories: neoforge or forge (Modrinth uses categories for loaders in search)
+        facets = json.dumps(
+            [
+                ["project_type:mod"],
+                [f"versions:{args.mc_version}"],
+                ["categories:neoforge", "categories:forge"],
+            ]
+        )
 
     # Resolve modIds to Modrinth slugs.
     out_lines: list[str] = []
@@ -120,7 +206,7 @@ def main() -> int:
 
     for modid in extracted_modids:
         try:
-            hits = modrinth_search(modid, limit=args.search_limit, timeout_s=args.timeout_s)
+            hits = modrinth_search(modid, limit=args.search_limit, timeout_s=args.timeout_s, facets=facets)
         except Exception as e:
             unresolved.append(modid)
             print(f"WARN: Modrinth search failed for {modid}: {e}", file=sys.stderr)
