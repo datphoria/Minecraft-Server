@@ -1,6 +1,6 @@
-# Minecraft Forge Server (Docker)
+# Minecraft NeoForge Server (Docker)
 
-Git-managed [itzg/minecraft-server](https://github.com/itzg/docker-minecraft-server) stack for **Forge 1.21.1**. Mods are declared as text lists (Modrinth slugs and CurseForge IDs); the container downloads and updates them on startup.
+Git-managed [itzg/minecraft-server](https://github.com/itzg/docker-minecraft-server) stack for **NeoForge 1.21.1** (matches `neoforge-21.1.220`). Mods are declared as text lists (Modrinth slugs and CurseForge IDs); the container downloads and updates them on startup.
 
 ## Project layout
 
@@ -86,7 +86,7 @@ nano .env   # set CF_API_KEY, RCON_PASSWORD, MAX_MEMORY
 | `CF_API_KEY` | Required if `curseforge-mods.txt` has any mods |
 | `RCON_PASSWORD` | Change from default; used for remote console |
 
-If your API key contains `$`, escape each `$` as `$$` in `compose.yaml` only. In `.env` you do **not** need to escape `$`.
+If your API key contains `$`, escape **each** `$` as `$$` in the VPS `.env` file (e.g. `$2a$10$abc` → `$$2a$$10$$abc`). Otherwise Docker Compose treats parts like `$qfAlwbQSdfJiiCcNtaf` as missing variables and prints warnings.
 
 ### Locally (for `deploy.sh`)
 

@@ -1,5 +1,5 @@
 # Modrinth project slugs — one per line.
-# The itzg/minecraft-server image downloads compatible .jar files for TYPE=FORGE
+# The itzg/minecraft-server image downloads compatible .jar files for TYPE=NEOFORGE
 # and VERSION=1.21.1 on each container start.
 #
 # Find slugs in the Modrinth URL: https://modrinth.com/mod/<slug>

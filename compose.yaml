@@ -1,7 +1,7 @@
 services:
   minecraft:
     image: itzg/minecraft-server:latest
-    container_name: minecraft-forge
+    container_name: minecraft-neoforge
     restart: unless-stopped
     ports:
       - "25565:25565"
@@ -9,8 +9,9 @@ services:
       - .env
     environment:
       EULA: "TRUE"
-      TYPE: FORGE
+      TYPE: NEOFORGE
       VERSION: "1.21.1"
+      NEOFORGE_VERSION: ${NEOFORGE_VERSION:-21.1.220}
       # MAX_MEMORY is the image's variable; MAX_RAM in docs often means the same thing
       MEMORY: ${MAX_MEMORY:-4G}
       MAX_MEMORY: ${MAX_MEMORY:-4G}
@@ -26,8 +27,7 @@ services:
       USE_AIKAR_FLAGS: "true"
       ENABLE_RCON: "true"
       RCON_PASSWORD: ${RCON_PASSWORD:-changeme}
-      # Uncomment to pin a specific Forge build instead of the recommended one:
-      # FORGE_VERSION: "52.0.0"
+      # Pin NeoForge if needed: NEOFORGE_VERSION: "21.1.220"
     volumes:
       - ./minecraft_data:/data
       - ./modrinth-mods.txt:/deploy/modrinth-mods.txt:ro

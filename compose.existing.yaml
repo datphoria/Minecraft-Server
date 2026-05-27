@@ -1,7 +1,7 @@
 services:
   minecraft:
     image: itzg/minecraft-server:latest
-    container_name: minecraft-forge
+    container_name: minecraft-neoforge
     restart: unless-stopped
     ports:
       - "25565:25565"
@@ -9,8 +9,10 @@ services:
       - .env
     environment:
       EULA: "TRUE"
-      TYPE: FORGE
+      TYPE: NEOFORGE
       VERSION: "1.21.1"
+      # Match your existing manual install (neoforge-21.1.220-installer.jar)
+      NEOFORGE_VERSION: ${NEOFORGE_VERSION:-21.1.220}
       MEMORY: ${MAX_MEMORY:-4G}
       MAX_MEMORY: ${MAX_MEMORY:-4G}
       TZ: ${TZ:-UTC}
