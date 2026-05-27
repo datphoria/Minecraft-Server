@@ -222,31 +222,6 @@ Push to `main` can deploy the server without running `deploy.sh` locally. The wo
 
 Only one deploy runs at a time (`concurrency` group).
 
-## 12. Automate migration of your existing 263 mods
-
-If your VPS currently has your mods as Forge jars under `/minecraft/mods/*.jar`, you can generate an initial `modrinth-mods.txt` automatically (Phase 2 starter list).
-
-### Phase 1: start without managed mods
-Follow section 4 and run `compose.existing.yaml` first so your current jars are preserved.
-
-### Generate a candidate `modrinth-mods.txt`
-Run this on the VPS (requires `python3`):
-
-```bash
-cd /opt/minecraft-server
-python3 scripts/generate_modrinth_mods_from_jars.py \
-  --mods-dir /minecraft/mods \
-  --out ./generated-modrinth-mods.txt \
-  --mc-version 1.21.1
-```
-
-Review `generated-modrinth-mods.txt`:
-- Lines ending with `?` are *optional* guesses (useful to avoid hard startup failure while you verify).
-- Replace your repo `modrinth-mods.txt` with the generated output once you’re happy with it (or edit specific lines).
-
-### Phase 2: switch back to managed installs
-After your generated list is correct enough to cover all the mods you care about, switch back to the default `compose.yaml` and restart the stack.
-
 ### Optional: require approval before deploy
 
 In GitHub: **Settings → Environments → New environment** → name it `production`, enable **Required reviewers**, then add to `.github/workflows/deploy.yml` under the job:
@@ -292,6 +267,48 @@ Graceful shutdown timing is controlled by `STOP_SERVER_ANNOUNCE_DELAY` and `STOP
 ## 10. Windows notes
 
 Run `deploy.sh` from **Git Bash** or **WSL**, not PowerShell (unless you port the script). Ensure OpenSSH and rsync are available (`rsync` ships with Git for Windows in many setups).
+
+## 12. Migrate 263 mods (CurseForge pack — recommended)
+
+**All of Create** and similar packs are CurseForge modpacks. Do **not** rely on Modrinth jar scanning alone — most mods are CurseForge-only.
+
+### Step A — generate CurseForge list from `manifest.json` (best)
+
+Your server folder should have `/minecraft/manifest.json` from the pack export:
+
+```bash
+cd /opt/minecraft-server
+python3 scripts/generate_curseforge_mods_from_manifest.py \
+  --manifest /minecraft/manifest.json \
+  --out ./generated-curseforge-mods.txt
+
+wc -l generated-curseforge-mods.txt   # expect ~200+ lines
+cp -f generated-curseforge-mods.txt curseforge-mods.txt
+```
+
+Ensure `CF_API_KEY` is set in `.env` (escape every `$` as `$$`).
+
+### Step B — optional Modrinth extras
+
+Only for mods you add from Modrinth later (or a small subset):
+
+```bash
+python3 scripts/generate_modrinth_mods_from_jars.py \
+  --mods-dir /minecraft/mods \
+  --recursive \
+  --out ./generated-modrinth-mods.txt
+```
+
+Many lines may still warn “not on Modrinth” — that is normal for this pack.
+
+### Step C — switch to Phase 2
+
+```bash
+mkdir -p minecraft_data
+rsync -a --exclude 'mods/' /minecraft/ ./minecraft_data/
+docker compose -f compose.existing.yaml down
+docker compose up -d
+```
 
 ## 11. Troubleshooting
 
