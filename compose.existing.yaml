@@ -11,8 +11,8 @@ services:
       EULA: "TRUE"
       TYPE: NEOFORGE
       VERSION: "1.21.1"
-      # Match your existing manual install (neoforge-21.1.220-installer.jar)
-      NEOFORGE_VERSION: ${NEOFORGE_VERSION:-21.1.220}
+      # 21.1.227+ required by some mods (e.g. tradeworks); use "latest" to auto-track
+      NEOFORGE_VERSION: ${NEOFORGE_VERSION:-21.1.227}
       MEMORY: ${MAX_MEMORY:-4G}
       MAX_MEMORY: ${MAX_MEMORY:-4G}
       TZ: ${TZ:-UTC}

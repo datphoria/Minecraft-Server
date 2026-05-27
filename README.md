@@ -1,6 +1,6 @@
 # Minecraft NeoForge Server (Docker)
 
-Git-managed [itzg/minecraft-server](https://github.com/itzg/docker-minecraft-server) stack for **NeoForge 1.21.1** (matches `neoforge-21.1.220`). Mods are declared as text lists (Modrinth slugs and CurseForge IDs); the container downloads and updates them on startup.
+Git-managed [itzg/minecraft-server](https://github.com/itzg/docker-minecraft-server) stack for **NeoForge 1.21.1** (default loader `21.1.227`). Mods are declared as text lists (Modrinth slugs and CurseForge IDs); the container downloads and updates them on startup.
 
 ## Project layout
 

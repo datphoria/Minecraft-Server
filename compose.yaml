@@ -11,7 +11,7 @@ services:
       EULA: "TRUE"
       TYPE: NEOFORGE
       VERSION: "1.21.1"
-      NEOFORGE_VERSION: ${NEOFORGE_VERSION:-21.1.220}
+      NEOFORGE_VERSION: ${NEOFORGE_VERSION:-21.1.227}
       # MAX_MEMORY is the image's variable; MAX_RAM in docs often means the same thing
       MEMORY: ${MAX_MEMORY:-4G}
       MAX_MEMORY: ${MAX_MEMORY:-4G}
@@ -27,7 +27,7 @@ services:
       USE_AIKAR_FLAGS: "true"
       ENABLE_RCON: "true"
       RCON_PASSWORD: ${RCON_PASSWORD:-changeme}
-      # Pin NeoForge if needed: NEOFORGE_VERSION: "21.1.220"
+      # Pin NeoForge if needed: NEOFORGE_VERSION: "21.1.227" or "latest"
     volumes:
       - ./minecraft_data:/data
       - ./modrinth-mods.txt:/deploy/modrinth-mods.txt:ro
